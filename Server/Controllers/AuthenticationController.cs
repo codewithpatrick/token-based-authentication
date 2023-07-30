@@ -1,8 +1,13 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using Server.Data;
 using Server.Data.Models;
 using Server.Data.ViewModels;
+using JwtRegisteredClaimNames = Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames;
 
 namespace Server.Controllers;
 
@@ -61,8 +66,43 @@ public class AuthenticationController : ControllerBase
         var userExists = await _userManager.FindByEmailAsync(loginVm.EmailAddress);
 
         if (userExists != null && await _userManager.CheckPasswordAsync(userExists, loginVm.Password))
-            return Ok("User signed in.");
+        {
+            var tokenValue = await GenerateJWTTokenAsync(userExists);
+
+            return Ok(tokenValue);
+        }
 
         return Unauthorized();
+    }
+
+    private async Task<AuthResultVM> GenerateJWTTokenAsync(ApplicationUser user)
+    {
+        var authClaims = new List<Claim>
+        {
+            new(ClaimTypes.Name, user.UserName),
+            new(ClaimTypes.NameIdentifier, user.Id),
+            new(JwtRegisteredClaimNames.Email, user.Email),
+            new(JwtRegisteredClaimNames.Sub, user.Email),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+
+        var authSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_configuration["JWT:Secret"]));
+
+        var token = new JwtSecurityToken(
+            _configuration["JWT:Issuer"],
+            _configuration["JWT:Audience"],
+            expires: DateTime.UtcNow.AddMinutes(1),
+            claims: authClaims,
+            signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256));
+
+        var jwtToken = new JwtSecurityTokenHandler().WriteToken(token);
+
+        var response = new AuthResultVM
+        {
+            Token = jwtToken,
+            ExpiresAt = token.ValidTo
+        };
+
+        return response;
     }
 }
