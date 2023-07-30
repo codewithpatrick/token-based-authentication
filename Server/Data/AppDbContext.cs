@@ -10,5 +10,7 @@ namespace Server.Data
         {
 
         }
+
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
     }
 }
