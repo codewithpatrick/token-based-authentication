@@ -97,9 +97,23 @@ public class AuthenticationController : ControllerBase
 
         var jwtToken = new JwtSecurityTokenHandler().WriteToken(token);
 
+        var refreshToken = new RefreshToken
+        {
+            Token = Guid.NewGuid() + "-" + Guid.NewGuid(),
+            JwtId = token.Id,
+            IsRevoked = false,
+            DateAdded = DateTime.UtcNow,
+            DateExpire = DateTime.UtcNow.AddMonths(6),
+            UserId = user.Id
+        };
+
+        await _context.RefreshTokens.AddRangeAsync(refreshToken);
+        await _context.SaveChangesAsync();
+
         var response = new AuthResultVM
         {
             Token = jwtToken,
+            RefreshToken = refreshToken.Token,
             ExpiresAt = token.ValidTo
         };
 
