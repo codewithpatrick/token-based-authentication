@@ -31,19 +31,13 @@ public class AuthenticationController : ControllerBase
     [HttpPost("register-user")]
     public async Task<IActionResult> Register([FromBody] RegisterVM registerVm)
     {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest("Please, provide all the required fields.");
-        }
+        if (!ModelState.IsValid) return BadRequest("Please, provide all the required fields.");
 
         var userExists = await _userManager.FindByEmailAsync(registerVm.EmailAddress);
 
-        if (userExists != null)
-        {
-            return BadRequest($"user {registerVm.EmailAddress} already exists");
-        }
+        if (userExists != null) return BadRequest($"user {registerVm.EmailAddress} already exists");
 
-        var newUser = new ApplicationUser()
+        var newUser = new ApplicationUser
         {
             FirstName = registerVm.FirstName,
             LastName = registerVm.LastName,
@@ -54,11 +48,21 @@ public class AuthenticationController : ControllerBase
 
         var result = await _userManager.CreateAsync(newUser, registerVm.Password);
 
-        if (result.Succeeded)
-        {
-            return Ok("User created");
-        }
+        if (result.Succeeded) return Ok("User created");
 
         return BadRequest("User could not be created");
+    }
+
+    [HttpPost("login-user")]
+    public async Task<IActionResult> Login([FromBody] LoginVm loginVm)
+    {
+        if (!ModelState.IsValid) return BadRequest("Please, provide all required fields.");
+
+        var userExists = await _userManager.FindByEmailAsync(loginVm.EmailAddress);
+
+        if (userExists != null && await _userManager.CheckPasswordAsync(userExists, loginVm.Password))
+            return Ok("User signed in.");
+
+        return Unauthorized();
     }
 }
