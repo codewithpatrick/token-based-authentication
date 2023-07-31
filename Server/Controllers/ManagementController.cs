@@ -1,7 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Server.Data.Helpers;
 
 namespace Server.Controllers;
 
+[Authorize(Roles = UserRoles.Manager)]
 [Route("api/[controller]")]
 [ApiController]
 public class ManagementController : ControllerBase
