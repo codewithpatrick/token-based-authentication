@@ -72,9 +72,10 @@ public class Program
 
         app.UseAuthentication();
         app.UseAuthorization();
-
-
+        
         app.MapControllers();
+
+        AppDbInitializer.SeedRolesToDb(app).Wait();
 
         app.Run();
     }
