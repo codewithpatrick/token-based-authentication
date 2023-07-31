@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Server.Data;
+using Server.Data.Helpers;
 using Server.Data.Models;
 using Server.Data.ViewModels;
 using JwtRegisteredClaimNames = Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames;
@@ -57,7 +58,22 @@ public class AuthenticationController : ControllerBase
 
         var result = await _userManager.CreateAsync(newUser, registerVm.Password);
 
-        if (result.Succeeded) return Ok("User created");
+        if (result.Succeeded)
+        {
+            switch (registerVm.Role)
+            {
+                case UserRoles.Manager:
+                    await _userManager.AddToRoleAsync(newUser, UserRoles.Manager);
+                    break;
+                case UserRoles.Student:
+                    await _userManager.AddToRoleAsync(newUser, UserRoles.Student);
+                    break;
+                default:
+                    break;
+            }
+
+            return Ok("User created");
+        }
 
         return BadRequest("User could not be created");
     }
@@ -127,6 +143,15 @@ public class AuthenticationController : ControllerBase
             new(JwtRegisteredClaimNames.Sub, user.Email),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+        // Add user role claims
+
+        var userRoles = await _userManager.GetRolesAsync(user);
+
+        foreach (var userRole in userRoles)
+        {
+            authClaims.Add(new Claim(ClaimTypes.Role, userRole));
+        }
 
         var authSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_configuration["JWT:Secret"]));
 
